@@ -25,7 +25,10 @@ def read_airlines():
     airlines = []
     with open('airlines.txt', encoding="utf-8") as f:
         for idx, line in enumerate(f.readlines()[1:]):
-            cols = [line[:3]] + line[4:].strip().split(';')
+            if line[:2] == ';;':
+                cols = [line[:2]] + line[3:].strip().split(';')
+            else:
+                cols = line.strip().split(';')
             airlines.append(Airline(*cols))
     return airlines
 
@@ -55,13 +58,14 @@ def read_data():
 
 
 class AirlineNetwork(object):
-    __slots__ = ['_num_airports', '_num_routes', '_airports', '_airlines']
+    __slots__ = ['_num_airports', '_num_routes', '_airports', '_airlines', '_routes']
 
     def __init__(self, airports: iter, routes: iter, airlines: iter):
         self._num_airports = 0
         self._num_routes = 0
         self._airports = defaultdict(dict)
         self._airlines = airlines
+        self._routes = routes
 
         for vertex in airports:
             self.add_vertex(vertex)
@@ -150,7 +154,7 @@ class AirlineNetwork(object):
                 else:
                     if route['to'] not in visited:
                         pq.append((route['to'], dist_to[route['to']][0]))
-        return self._get_shortest_path(end, dist_to), dist_to[end][0]
+        return self._get_path(end, dist_to), dist_to[end][0]
 
     def shortes_route_time(self, start: str, end: str):
         pq = []
@@ -176,14 +180,21 @@ class AirlineNetwork(object):
                 else:
                     if route['to'] not in visited:
                         pq.append((route['to'], dist_to[route['to']][0]))
-        return self._get_shortest_path(end, dist_to), dist_to[end][0]
+        return self._get_path(end, dist_to), dist_to[end][0]
 
     def widest_coverage(self):
-        pass
+        coverage = {}
+        for airline in self._airlines:
+            vertices = defaultdict(dict)
+            edges = [edge for edge in self._routes if edge.AIRLINE_CODE == airline.CODE]
+            for edge in edges:
+                vertices[edge.SOURCE_CODE][edge.DESTINATION_CODE] = edge.DISTANCE,edge.TIME
+            coverage[airline.NAME] = len(vertices)
+        return sorted(coverage.items(),reverse=True,key=lambda x:x[1])#[0]
 
-    def _get_shortest_path(self, end: str, dist_to: dict) -> str:
+    def _get_path(self, end: str, dist_to: dict) -> str:
         if end:
-            cur = self._get_shortest_path(dist_to[end][1], dist_to)
+            cur = self._get_path(dist_to[end][1], dist_to)
             res = f'{f"{cur} -> " if cur else ""}{end}'
             return res
         else:
@@ -193,31 +204,33 @@ class AirlineNetwork(object):
 if __name__ == '__main__':
     aircrafts, airlines, airports, routes = read_data()
 
-    start = seconds()
+    # start = seconds()
     network = AirlineNetwork(airports, routes, airlines)
-    end = seconds()
-    print('network', end - start)
+    # end = seconds()
+    # print('network', end - start)
 
-    start = seconds()
-    print(network.is_connected_df('CPH', 'LGW', 'U2'))
-    print(network.is_connected_df('CPH', 'LGW', 'DX'))
-    end = seconds()
-    print('df', end - start)
+    # start = seconds()
+    # print(network.is_connected_df('CPH', 'LGW', 'U2'))
+    # print(network.is_connected_df('CPH', 'LGW', 'DX'))
+    # end = seconds()
+    # print('df', end - start)
+    #
+    # start = seconds()
+    # print(network.is_connected_bf('CPH', 'LGW', 'U2'))
+    # print(network.is_connected_bf('CPH', 'LGW', 'DX'))
+    # end = seconds()
+    # print('bf', end - start)
+    #
+    # start = seconds()
+    # print(network.shortes_route_distance('CPH', 'LGW'))
+    # end = seconds()
+    # print('sp_dis', end - start)
+    # start = seconds()
+    # print(network.shortes_route_time('CPH', 'LGW'))
+    # end = seconds()
+    # print('sp_time', end - start)
 
-    start = seconds()
-    print(network.is_connected_bf('CPH', 'LGW', 'U2'))
-    print(network.is_connected_bf('CPH', 'LGW', 'DX'))
-    end = seconds()
-    print('bf', end - start)
-
-    start = seconds()
-    print(network.shortes_route_distance('CPH', 'LGW'))
-    end = seconds()
-    print('sp_dis', end - start)
-    start = seconds()
-    print(network.shortes_route_time('CPH', 'LGW'))
-    end = seconds()
-    print('sp_time', end - start)
+    pp(network.widest_coverage())
 
     # print(f'{"Expected".ljust(10)}: Airports: {len(airports)}, Routes: {len(routes)}')
     # print(f'{"Actual".ljust(10)}: Airports: {network.num_vertices}, Routes: {network.num_edges}')
